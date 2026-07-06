@@ -49,13 +49,32 @@ class HandTracker:
                     lm_list.append((cx, cy))
                 hands_landmarks.append(lm_list)
                 
-                # Draw manually since solutions drawing utils is missing
-                for cx, cy in lm_list:
-                    cv2.circle(frame, (cx, cy), 4, (0, 255, 0), cv2.FILLED)
+                # Draw minimal HUD brackets around the hand
+                x_coords = [cx for cx, cy in lm_list]
+                y_coords = [cy for cx, cy in lm_list]
+                min_x, max_x = min(x_coords) - 20, max(x_coords) + 20
+                min_y, max_y = min(y_coords) - 20, max(y_coords) + 20
+                
+                bracket_color = (0, 255, 100) # Acid Green
+                b_len = 12
+                thick = 2
+                cv2.line(frame, (min_x, min_y), (min_x + b_len, min_y), bracket_color, thick)
+                cv2.line(frame, (min_x, min_y), (min_x, min_y + b_len), bracket_color, thick)
+                cv2.line(frame, (max_x, min_y), (max_x - b_len, min_y), bracket_color, thick)
+                cv2.line(frame, (max_x, min_y), (max_x, min_y + b_len), bracket_color, thick)
+                cv2.line(frame, (min_x, max_y), (min_x + b_len, max_y), bracket_color, thick)
+                cv2.line(frame, (min_x, max_y), (min_x, max_y - b_len), bracket_color, thick)
+                cv2.line(frame, (max_x, max_y), (max_x - b_len, max_y), bracket_color, thick)
+                cv2.line(frame, (max_x, max_y), (max_x, max_y - b_len), bracket_color, thick)
+
+                # Draw skeleton (White lines, Green joints)
                 for conn in self.connections:
                     p1 = lm_list[conn[0]]
                     p2 = lm_list[conn[1]]
-                    cv2.line(frame, p1, p2, (255, 0, 0), 2)
+                    cv2.line(frame, p1, p2, (200, 200, 200), 1)
+                    
+                for cx, cy in lm_list:
+                    cv2.circle(frame, (cx, cy), 3, (0, 255, 100), cv2.FILLED)
                     
         return frame, hands_landmarks
 

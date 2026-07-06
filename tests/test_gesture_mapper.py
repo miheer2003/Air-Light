@@ -22,10 +22,27 @@ def test_closed_fist_turns_off_bulb(mapper):
     mapper.bulb.turn_off.assert_called_once()
     assert mapper.last_power_state == False
 
-def test_pinch_sets_brightness(mapper):
+def test_pinch_sets_saturation(mapper):
     mapper.handle_gesture("Pinch", 50.0)
-    mapper.bulb.set_brightness.assert_called_once_with(50)
-    assert mapper.last_brightness == 50
+    mapper.bulb.set_saturation.assert_called_once_with(50)
+    assert mapper.last_saturation == 50
+
+def test_finger_gestures_set_colors(mapper):
+    mapper.handle_gesture("1 Finger")
+    mapper.bulb.set_color.assert_called_with("white")
+    
+    # reset lock timeout
+    mapper.last_action_time = 0
+    mapper.handle_gesture("2 Fingers")
+    mapper.bulb.set_color.assert_called_with("red")
+    
+    mapper.last_action_time = 0
+    mapper.handle_gesture("3 Fingers")
+    mapper.bulb.set_color.assert_called_with("green")
+    
+    mapper.last_action_time = 0
+    mapper.handle_gesture("4 Fingers")
+    mapper.bulb.set_color.assert_called_with("blue")
 
 def test_cooldown_prevents_spam(mapper):
     mapper.handle_gesture("Open Palm")

@@ -22,10 +22,6 @@ class GestureClassifier:
         self.prev_hand_center = None
         self.swipe_threshold = 130
         self.swipe_cooldown = 1.5
-        
-        # For dial detection
-        self.prev_index_angle = None
-        self.current_saturation = 100.0 # start at 100%
 
     def process_hand(self, lm_list: List[Tuple[int, int]]) -> Tuple[str, Optional[float]]:
         """
@@ -57,32 +53,7 @@ class GestureClassifier:
             smoothed_val = self.brightness_ema.update(mapped_val)
             return "Pinch", smoothed_val
             
-        # 4. Check for Dial (1 finger open, rotating)
-        if count == 1 and open_fingers[1] == 1 and open_fingers[0] == 0:
-            angle = self.detector.get_index_angle(lm_list)
-            if self.prev_index_angle is not None:
-                # Calculate angle difference (handle wrap-around)
-                diff = angle - self.prev_index_angle
-                if diff > 180: diff -= 360
-                elif diff < -180: diff += 360
-                
-                # If rotating, change saturation
-                if abs(diff) > 2.0: # threshold to prevent jitter
-                    # Inverted so clockwise increases saturation (usually downwards in screen coords)
-                    # Note: y goes down in OpenCV, so angle increases clockwise. 
-                    # If diff > 0 (clockwise), increase saturation.
-                    self.current_saturation += diff * 0.5
-                    self.current_saturation = max(0.0, min(100.0, self.current_saturation))
-                    
-                    smoothed_val = self.saturation_ema.update(self.current_saturation)
-                    self.prev_index_angle = angle
-                    return "Dial", smoothed_val
-            self.prev_index_angle = angle
-            # Fallthrough to discrete 1-finger gesture if not rotating fast enough
-        else:
-            self.prev_index_angle = None
-            
-        # 5. Classify discrete gestures
+        # 4. Classify discrete gestures
         raw_gesture = self._classify_fingers(open_fingers, count, lm_list)
         
         # 6. Apply gesture hold filter
@@ -138,17 +109,37 @@ class GestureClassifier:
         if count == 4 and open_fingers[0] == 0:
             return "4 Fingers"
             
+        # OK Sign: Thumb and Index touching, others open
+        if open_fingers[2] == 1 and open_fingers[3] == 1 and open_fingers[4] == 1:
+            thumb_tip = lm_list[4]
+            index_tip = lm_list[8]
+            dist = ((thumb_tip[0] - index_tip[0])**2 + (thumb_tip[1] - index_tip[1])**2)**0.5
+            if dist < 40:
+                return "OK Sign"
+            
         return "None"
 
     def _check_swipe(self, center: Tuple[int, int], current_time: float) -> str:
         if self.prev_hand_center and (current_time - self.last_action_time) > self.swipe_cooldown:
             dx = center[0] - self.prev_hand_center[0]
-            if dx > self.swipe_threshold:
-                self.last_action_time = current_time
-                self.prev_hand_center = center
-                return "Swipe Right"
-            elif dx < -self.swipe_threshold:
-                self.last_action_time = current_time
-                self.prev_hand_center = center
-                return "Swipe Left"
+            dy = center[1] - self.prev_hand_center[1]
+            
+            if abs(dx) > abs(dy):
+                if dx > self.swipe_threshold:
+                    self.last_action_time = current_time
+                    self.prev_hand_center = center
+                    return "Swipe Right"
+                elif dx < -self.swipe_threshold:
+                    self.last_action_time = current_time
+                    self.prev_hand_center = center
+                    return "Swipe Left"
+            else:
+                if dy > self.swipe_threshold:
+                    self.last_action_time = current_time
+                    self.prev_hand_center = center
+                    return "Swipe Down" # y increases downwards in OpenCV
+                elif dy < -self.swipe_threshold:
+                    self.last_action_time = current_time
+                    self.prev_hand_center = center
+                    return "Swipe Up"
         return "None"

@@ -1,4 +1,5 @@
 import time
+import threading
 from typing import Optional
 from logger import logger
 from bulb_controller import BulbController
@@ -12,6 +13,7 @@ class GestureMapper:
         self.bulb = bulb_controller
         self.last_action_time = 0
         self.cooldown = 0.8  # seconds
+        self.lock = threading.Lock()
         
         # State tracking to avoid redundant commands
         self.last_power_state = None
@@ -26,19 +28,8 @@ class GestureMapper:
         """Processes a gesture and triggers the bulb if necessary."""
         current_time = time.time()
         
-        # Brightness (Pinch) - handled smoothly
+        # Density / Saturation (Pinch) - handled smoothly
         if gesture == "Pinch" and value is not None:
-            brightness_val = int(value)
-            if self.last_brightness is None or abs(self.last_brightness - brightness_val) >= 8:
-                if current_time - self.last_action_time > 0.25:
-                    logger.info(f"Setting brightness to {brightness_val}%")
-                    self.bulb.set_brightness(brightness_val)
-                    self.last_brightness = brightness_val
-                    self.last_action_time = current_time
-            return
-            
-        # Density / Saturation (Dial) - handled smoothly
-        if gesture == "Dial" and value is not None:
             sat_val = int(value)
             if self.last_saturation is None or abs(self.last_saturation - sat_val) >= 8:
                 if current_time - self.last_action_time > 0.25:
@@ -49,8 +40,10 @@ class GestureMapper:
             return
 
         # Discrete gestures - require full cooldown
-        if current_time - self.last_action_time < self.cooldown:
-            return
+        with self.lock:
+            if current_time - self.last_action_time < self.cooldown:
+                return
+            self.last_action_time = current_time
             
         action_taken = False
 
@@ -70,12 +63,16 @@ class GestureMapper:
                 
         elif gesture == "1 Finger":
             action_taken = self._set_color("white")
-        elif gesture == "2 Fingers":
+        elif gesture == "2 Fingers" or gesture == "Peace Sign":
             action_taken = self._set_color("red")
         elif gesture == "3 Fingers":
             action_taken = self._set_color("green")
         elif gesture == "4 Fingers":
             action_taken = self._set_color("blue")
+        elif gesture == "OK Sign":
+            self.bulb.set_scene(4)
+            logger.info("Gesture: OK Sign -> Scene 4")
+            action_taken = True
             
         elif gesture == "Thumbs Up":
             action_taken = self._set_color("warm_white")
@@ -101,9 +98,21 @@ class GestureMapper:
             self.current_color_idx = (self.current_color_idx - 1) % len(self.colors)
             action_taken = self._set_color(self.colors[self.current_color_idx])
             logger.info(f"Gesture: Swipe Left -> Prev Color ({self.colors[self.current_color_idx]})")
+            
+        elif gesture == "Swipe Up":
+            self.last_brightness = min(100, (self.last_brightness or 50) + 15)
+            self.bulb.set_brightness(self.last_brightness)
+            action_taken = True
+            logger.info(f"Gesture: Swipe Up -> Brightness {self.last_brightness}%")
+            
+        elif gesture == "Swipe Down":
+            self.last_brightness = max(1, (self.last_brightness or 50) - 15)
+            self.bulb.set_brightness(self.last_brightness)
+            action_taken = True
+            logger.info(f"Gesture: Swipe Down -> Brightness {self.last_brightness}%")
 
         if action_taken:
-            self.last_action_time = current_time
+            pass # already updated last_action_time inside lock
 
     def _set_color(self, color: str) -> bool:
         if self.last_color != color:

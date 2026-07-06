@@ -9,6 +9,7 @@ def classifier():
     clf.detector = MagicMock()
     # Prevent swipe by default by setting hand center constant
     clf.detector.get_hand_center.return_value = (100, 100)
+    clf.gesture_hold_threshold = 1
     return clf
 
 def test_open_palm(classifier):

@@ -1,10 +1,14 @@
 {
-    "device_ip": "192.168.1.100",
-    "device_id": "your_device_id",
-    "local_key": "your_local_key",
+    "devices": [
+        {
+            "ip": "192.168.1.100",
+            "id": "485501002462ab0ddb14",
+            "key": "?!51T/RT.^!z+7Wq"
+        }
+    ],
     "camera_index": 0,
     "default_brightness": 100,
-    "mock_mode": true,
+    "mock_mode": false,
     "cooldown_ms": 300,
     "pinch_min_dist": 20,
     "pinch_max_dist": 200

@@ -158,3 +158,28 @@ class BulbController:
                         device.set_colour(int(r * 255), int(g * 255), int(b * 255))
                 except Exception as e:
                     logger.error(f"Error setting color for bulb: {e}")
+
+    def set_rgb(self, r: int, g: int, b: int):
+        if not self.is_connected: return
+        self.current_color = "custom"
+        with self.lock:
+            if self.mock_mode:
+                logger.debug(f"[MOCK] {self.total_count} Bulbs Color -> RGB({r},{g},{b})")
+                return
+            for device in self.devices:
+                try:
+                    device.set_colour(r, g, b)
+                except Exception as e:
+                    logger.error(f"Error setting RGB for bulb: {e}")
+
+    def set_scene(self, scene_num: int):
+        if not self.is_connected: return
+        with self.lock:
+            if self.mock_mode:
+                logger.debug(f"[MOCK] {self.total_count} Bulbs Scene -> {scene_num}")
+                return
+            for device in self.devices:
+                try:
+                    device.set_scene(scene_num)
+                except Exception as e:
+                    logger.error(f"Error setting scene for bulb: {e}")

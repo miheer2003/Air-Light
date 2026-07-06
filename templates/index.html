@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>AirLight // SYSTEM_OS</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@jaames/iro@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;600;700&family=Inter:wght@400;500;700&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --neon-cyan: #06b6d4;
+            --neon-pink: #d946ef;
+            --dark-bg: #09090b;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--dark-bg);
+            color: #e4e4e7;
+            -webkit-font-smoothing: antialiased;
+            overflow: hidden;
+            background-image: 
+                linear-gradient(rgba(6, 182, 212, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(6, 182, 212, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
+        }
+
+        h1, h2, h3, h4, h5, h6, .font-tech {
+            font-family: 'Space Grotesk', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(9, 9, 11, 0.6);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(6, 182, 212, 0.15);
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .glass-panel:hover {
+            border-color: rgba(6, 182, 212, 0.4);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15), inset 0 0 10px rgba(6, 182, 212, 0.05);
+            transform: translateY(-2px);
+        }
+
+        /* Neon Glows */
+        .neon-text-cyan { text-shadow: 0 0 15px rgba(6, 182, 212, 0.6); }
+        .neon-text-pink { text-shadow: 0 0 15px rgba(217, 70, 239, 0.6); }
+
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .tab-content { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; }
+        .tab-content.active { display: flex; opacity: 1; }
+        
+        /* Cyberpunk Sliders */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 24px;
+            width: 8px;
+            background: var(--neon-cyan);
+            cursor: pointer;
+            margin-top: -10px;
+            box-shadow: 0 0 12px var(--neon-cyan);
+            border-radius: 2px;
+            transition: all 0.2s;
+        }
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: var(--neon-pink);
+            box-shadow: 0 0 16px var(--neon-pink);
+            transform: scale(1.2);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+        }
+
+        /* HUD Elements */
+        .scanlines {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.15));
+            background-size: 100% 4px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .hud-brackets::before, .hud-brackets::after {
+            content: '';
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--neon-cyan);
+            z-index: 30;
+            pointer-events: none;
+            opacity: 0.5;
+            transition: all 0.3s;
+        }
+        .hud-brackets::before {
+            top: 24px; left: 24px;
+            border-right: none; border-bottom: none;
+        }
+        .hud-brackets::after {
+            bottom: 24px; right: 24px;
+            border-left: none; border-top: none;
+        }
+        .hud-brackets:hover::before, .hud-brackets:hover::after {
+            opacity: 1;
+            box-shadow: 0 0 10px var(--neon-cyan);
+            width: 40px; height: 40px;
+        }
+
+        /* Custom Scrollbar for inner elements */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(6, 182, 212, 0.3); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(6, 182, 212, 0.6); }
+        
+        .pulse-fast { animation: pulse-fast 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; }
+            50% { opacity: .3; }
+        }
+
+        .card-hover {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .card-hover:hover {
+            transform: scale(1.02);
+            background: rgba(6, 182, 212, 0.05);
+            border-color: var(--neon-cyan);
+            box-shadow: 0 0 20px rgba(6, 182, 212, 0.15);
+        }
+
+        /* Cyber Button */
+        .btn-cyber {
+            position: relative;
+            background: transparent;
+            color: var(--neon-cyan);
+            border: 1px solid var(--neon-cyan);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .btn-cyber::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.4), transparent);
+            transition: all 0.5s;
+        }
+        .btn-cyber:hover {
+            background: rgba(6, 182, 212, 0.1);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.4);
+        }
+        .btn-cyber:hover::before {
+            left: 100%;
+        }
+        
+        .btn-cyber-solid {
+            background: var(--neon-cyan);
+            color: #000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.3);
+        }
+        .btn-cyber-solid:hover {
+            background: #22d3ee;
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.6);
+            transform: translateY(-1px);
+        }
+    </style>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        secondary: "#06b6d4",
+                        accent: "#d946ef",
+                        surface: "#09090b",
+                        "surface-variant": "#18181b",
+                        "on-surface": "#e4e4e7",
+                        "outline-variant": "rgba(6, 182, 212, 0.2)",
+                    },
+                    spacing: { md: "24px", lg: "40px", xl: "64px", gutter: "24px" }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="flex min-h-screen text-on-surface">
+    <!-- Sidebar -->
+    <aside class="w-64 h-screen fixed left-0 top-0 border-r border-outline-variant flex flex-col py-xl px-md z-50 bg-surface/90 backdrop-blur-xl">
+        <div class="mb-xl relative">
+            <div class="absolute -left-2 top-0 w-1 h-full bg-secondary rounded-full shadow-[0_0_10px_#06b6d4]"></div>
+            <h1 class="text-3xl font-tech font-bold tracking-tighter text-white neon-text-cyan pl-2">AirLight</h1>
+            <p class="text-[10px] uppercase tracking-[0.3em] text-secondary font-bold mt-2 pl-2">SYSTEM.CORE_v3</p>
+        </div>
+        <nav class="flex-grow space-y-2 mt-4" id="nav-tabs">
+            <a onclick="switchTab('dashboard')" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl bg-secondary/10 text-secondary font-bold border border-secondary/30 transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.15)]" data-tab="dashboard">
+                <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">dashboard</span>
+                <span class="font-tech tracking-wide">HUD / View</span>
+            </a>
+            <a onclick="toggleModal(true)" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300" data-tab="devices">
+                <span class="material-symbols-outlined">tungsten</span>
+                <span class="font-tech tracking-wide">Hardware</span>
+            </a>
+            <a onclick="switchTab('gestures')" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300" data-tab="gestures">
+                <span class="material-symbols-outlined">gesture</span>
+                <span class="font-tech tracking-wide">Gestures</span>
+            </a>
+            <a onclick="switchTab('scenes')" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300" data-tab="scenes">
+                <span class="material-symbols-outlined">palette</span>
+                <span class="font-tech tracking-wide">Scenes</span>
+            </a>
+            <a onclick="switchTab('analytics')" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300" data-tab="analytics">
+                <span class="material-symbols-outlined">analytics</span>
+                <span class="font-tech tracking-wide">Sys Logs</span>
+            </a>
+            <a onclick="switchTab('settings')" class="nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300 mt-auto" data-tab="settings">
+                <span class="material-symbols-outlined">settings</span>
+                <span class="font-tech tracking-wide">Config</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ml-64 flex-1 h-screen flex flex-col relative overflow-hidden">
+        <!-- Header -->
+        <header class="flex justify-between items-center w-full h-20 px-lg border-b border-outline-variant bg-surface/80 backdrop-blur-md z-40">
+            <div class="flex items-center space-x-4 bg-black/40 px-4 py-2 rounded-lg border border-white/5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] pulse-fast"></span>
+                <span id="ui-bulb-status" class="text-sm font-tech font-bold text-emerald-400 uppercase tracking-widest">Sys_Online</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="sendAction('power', 'on')" class="btn-cyber-solid px-6 py-2.5 font-tech font-bold rounded-md text-sm">POWER ON</button>
+                <button onclick="sendAction('power', 'off')" class="btn-cyber px-6 py-2.5 font-tech font-bold rounded-md text-sm">POWER OFF</button>
+            </div>
+        </header>
+
+        <!-- Dashboard Tab -->
+        <div id="tab-dashboard" class="tab-content active flex-1 overflow-hidden">
+            <section class="flex-1 p-gutter relative overflow-hidden flex flex-col">
+                <div class="flex-1 relative rounded-2xl overflow-hidden bg-black/50 border border-secondary/20 hud-brackets shadow-[inset_0_0_50px_rgba(0,0,0,0.8)]">
+                    <img class="w-full h-full object-cover opacity-60 mix-blend-screen" id="video-feed" src="/video_feed" alt="Camera Feed"/>
+                    <div class="scanlines"></div>
+                    
+                    <!-- HUD Overlays -->
+                    <div class="absolute top-6 right-6 flex items-center space-x-2 bg-black/60 px-3 py-1 rounded border border-secondary/30 backdrop-blur-sm z-30">
+                        <span class="material-symbols-outlined text-secondary text-sm">videocam</span>
+                        <span class="font-tech text-xs tracking-widest text-secondary">REC_</span>
+                    </div>
+
+                    <div class="absolute inset-0 z-30 p-xl flex flex-col justify-end pointer-events-none">
+                        <div class="space-y-3 bg-black/70 p-6 rounded-xl border border-secondary/20 backdrop-blur-md inline-block max-w-lg shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+                            <div class="flex items-baseline space-x-4">
+                                <span class="material-symbols-outlined text-secondary pulse-fast">sensors</span>
+                                <span id="ui-gesture" class="text-4xl font-tech font-bold text-white neon-text-cyan tracking-tight uppercase">Scanning...</span>
+                            </div>
+                            <div class="h-px w-full bg-gradient-to-r from-secondary/50 to-transparent my-2"></div>
+                            <span id="ui-action" class="font-tech text-sm tracking-widest text-secondary opacity-80 uppercase block">Awaiting Input Signal</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+            
+            <aside class="w-[420px] h-full border-l border-outline-variant bg-surface/40 backdrop-blur-xl p-lg overflow-y-auto no-scrollbar relative">
+                <!-- Decorative background elements -->
+                <div class="absolute top-0 right-0 w-32 h-32 bg-secondary/5 rounded-full blur-3xl"></div>
+                <div class="absolute bottom-0 left-0 w-32 h-32 bg-accent/5 rounded-full blur-3xl"></div>
+                
+                <div class="space-y-8 relative z-10">
+                    <div class="glass-panel p-6 rounded-2xl">
+                        <div class="flex items-center space-x-2 mb-6">
+                            <span class="material-symbols-outlined text-secondary">tune</span>
+                            <h3 class="text-sm font-tech font-bold uppercase tracking-widest text-white">Metrics Config</h3>
+                        </div>
+                        <div class="space-y-8">
+                            <div>
+                                <label class="flex justify-between text-xs font-tech tracking-widest text-on-surface/60 mb-3">
+                                    <span>LUMA_LEVEL</span>
+                                    <span id="ui-brightness-text" class="text-secondary font-bold">0%</span>
+                                </label>
+                                <input type="range" id="brightness-slider" min="1" max="100" value="50" oninput="document.getElementById('ui-brightness-text').innerText = this.value + '%'">
+                            </div>
+                            <div>
+                                <label class="flex justify-between text-xs font-tech tracking-widest text-on-surface/60 mb-3">
+                                    <span>CHROMA_DENSITY</span>
+                                    <span id="ui-saturation-text" class="text-secondary font-bold">0%</span>
+                                </label>
+                                <input type="range" id="saturation-slider" min="0" max="100" value="100" oninput="document.getElementById('ui-saturation-text').innerText = this.value + '%'">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="glass-panel p-6 rounded-2xl flex flex-col items-center">
+                        <div class="flex items-center space-x-2 w-full mb-6">
+                            <span class="material-symbols-outlined text-accent">color_lens</span>
+                            <h3 class="text-sm font-tech font-bold uppercase tracking-widest text-white">Spectrum Map</h3>
+                        </div>
+                        <div id="color-picker" class="mb-6 filter drop-shadow-[0_0_15px_rgba(217,70,239,0.2)]"></div>
+                        <div class="bg-black/50 px-6 py-2 rounded-full border border-white/5">
+                            <p id="ui-color" class="text-xs font-tech tracking-widest text-on-surface/60 uppercase">FPS: --</p>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Gestures Tab -->
+        <div id="tab-gestures" class="tab-content flex-1 p-10 overflow-y-auto text-on-surface relative">
+            <div class="max-w-6xl mx-auto">
+                <h2 class="text-4xl font-tech font-bold mb-2 text-white neon-text-cyan uppercase tracking-tight">Gesture Protocol</h2>
+                <p class="text-on-surface/50 mb-10 font-tech tracking-widest text-sm">HAND TRACKING SYNTAX LIBRARY // v3.0</p>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Cards -->
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-secondary/20 to-secondary/5 border border-secondary/30 flex items-center justify-center text-3xl shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">🖐️</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">Open Palm</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Engages power sequence (ON).</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center text-3xl">✊</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">Closed Fist</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Disengages power sequence (OFF).</p></div>
+                    </div>
+                    
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover border-accent/20">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-[inset_0_0_15px_rgba(217,70,239,0.2)]">☝️</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">1 Finger</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Sets spectrum to White.</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover border-accent/20">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-[inset_0_0_15px_rgba(217,70,239,0.2)]">✌️</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">2 Fingers / Peace</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Sets spectrum to Red.</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover border-accent/20">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-[inset_0_0_15px_rgba(217,70,239,0.2)]">🤟</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">3 Fingers</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Sets spectrum to Green.</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover border-accent/20">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center text-3xl shadow-[inset_0_0_15px_rgba(217,70,239,0.2)]">🖐</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">4 Fingers</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Sets spectrum to Blue.</p></div>
+                    </div>
+
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-emerald-500/20 to-transparent border border-emerald-500/30 flex items-center justify-center text-3xl">👌</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">OK Sign</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Triggers Leisure Mode.</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-yellow-500/20 to-transparent border border-yellow-500/30 flex items-center justify-center text-3xl">🤏</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">Pinch</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Distance alters Chroma Density.</p></div>
+                    </div>
+                    <div class="glass-panel p-6 rounded-2xl flex items-start space-x-5 card-hover">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-white/10 to-transparent border border-white/20 flex items-center justify-center text-3xl">👆</div>
+                        <div><h3 class="font-tech font-bold text-lg text-white tracking-wide">Swipe Y-Axis</h3><p class="opacity-60 text-sm mt-1 leading-relaxed">Modifies Luma Level (Brightness).</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scenes Tab -->
+        <div id="tab-scenes" class="tab-content flex-1 p-10 overflow-y-auto text-on-surface relative">
+            <div class="max-w-5xl mx-auto">
+                <h2 class="text-4xl font-tech font-bold mb-2 text-white neon-text-pink uppercase tracking-tight">Tuya Scenes</h2>
+                <p class="text-on-surface/50 mb-10 font-tech tracking-widest text-sm">PRE-CONFIGURED ENVIRONMENT STATES</p>
+                
+                <div id="scenes-container" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Analytics Tab -->
+        <div id="tab-analytics" class="tab-content flex-1 p-10 overflow-y-auto text-on-surface">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-4xl font-tech font-bold mb-2 text-white neon-text-cyan uppercase tracking-tight">System Documentation</h2>
+                <p class="text-on-surface/50 mb-10 font-tech tracking-widest text-sm">AIRLIGHT README LOGS</p>
+                <div id="readme-content" class="glass-panel p-10 rounded-3xl prose prose-invert prose-headings:font-tech prose-a:text-secondary max-w-none">
+                    <div class="flex items-center space-x-3 opacity-50 pulse-fast">
+                        <span class="material-symbols-outlined">downloading</span>
+                        <span class="font-tech tracking-widest">FETCHING DATA...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Tab -->
+        <div id="tab-settings" class="tab-content flex-1 p-10 overflow-y-auto text-on-surface">
+            <div class="max-w-4xl mx-auto">
+                <h2 class="text-4xl font-tech font-bold mb-2 text-white uppercase tracking-tight">System Config</h2>
+                <p class="text-on-surface/50 mb-10 font-tech tracking-widest text-sm">USER PREFERENCES</p>
+                
+                <div class="glass-panel p-8 rounded-3xl max-w-xl">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h3 class="font-tech font-bold text-xl text-white tracking-wide">Theme Override</h3>
+                            <p class="opacity-50 text-sm mt-1">Force light/dark render mode.</p>
+                        </div>
+                        <button onclick="toggleTheme()" class="btn-cyber px-6 py-2 rounded-lg font-tech font-bold text-sm">OVERRIDE</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Device Modal -->
+    <div id="device-modal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/80 backdrop-blur-md">
+        <div class="glass-panel w-[400px] rounded-3xl p-8 shadow-2xl relative text-on-surface border-secondary/40">
+            <button onclick="toggleModal(false)" class="absolute top-6 right-6 material-symbols-outlined text-secondary hover:text-white hover:rotate-90 transition-all">close</button>
+            <div class="flex items-center space-x-3 mb-6">
+                <span class="material-symbols-outlined text-secondary text-3xl">memory</span>
+                <h2 class="text-2xl font-tech font-bold text-white neon-text-cyan tracking-wide">Device Status</h2>
+            </div>
+            
+            <div class="space-y-5 font-tech tracking-wide text-sm">
+                <div class="flex justify-between border-b border-white/5 pb-3">
+                    <span class="opacity-50">NODE_ID</span><span class="text-white">Living Room Main</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-3">
+                    <span class="opacity-50">LOCAL_IP</span><span class="text-secondary" id="modal-ip">Loading...</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-3">
+                    <span class="opacity-50">PROTOCOL</span><span class="text-white">Tuya Local v3.3</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-3">
+                    <span class="opacity-50">NET_STATUS</span><span class="text-emerald-400 pulse-fast" id="modal-status">Online</span>
+                </div>
+                <div class="flex justify-between border-b border-white/5 pb-3">
+                    <span class="opacity-50">POWER_STATE</span><span class="text-white" id="ui-power">OFF</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API Actions
+        async function sendAction(type, value) {
+            try {
+                await fetch('/api/action', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({type, value})
+                });
+            } catch(e) { console.error("Action failed", e); }
+        }
+
+        // Color Picker (iro.js)
+        var colorPicker = new iro.ColorPicker("#color-picker", {
+            width: 260,
+            color: "#06b6d4",
+            borderWidth: 2,
+            borderColor: "rgba(255,255,255,0.1)",
+            layout: [
+                { component: iro.ui.Wheel },
+            ]
+        });
+        
+        colorPicker.on('input:end', function(color) {
+            sendAction('rgb', {r: color.rgb.r, g: color.rgb.g, b: color.rgb.b});
+        });
+
+        // Slider Drag State
+        let isDraggingBrightness = false;
+        let isDraggingSaturation = false;
+        
+        const bSlider = document.getElementById('brightness-slider');
+        const sSlider = document.getElementById('saturation-slider');
+        
+        ['mousedown', 'touchstart'].forEach(evt => {
+            bSlider.addEventListener(evt, () => isDraggingBrightness = true);
+            sSlider.addEventListener(evt, () => isDraggingSaturation = true);
+        });
+        
+        ['mouseup', 'touchend', 'mouseleave'].forEach(evt => {
+            bSlider.addEventListener(evt, () => {
+                if(isDraggingBrightness) {
+                    isDraggingBrightness = false;
+                    sendAction('brightness', bSlider.value);
+                }
+            });
+            sSlider.addEventListener(evt, () => {
+                if(isDraggingSaturation) {
+                    isDraggingSaturation = false;
+                    sendAction('saturation', sSlider.value);
+                }
+            });
+        });
+
+        // Polling loop
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/status');
+                const data = await response.json();
+                
+                document.getElementById('ui-bulb-status').innerText = 'NODES_ONLINE: ' + data.bulb;
+                document.getElementById('ui-gesture').innerText = data.gesture !== "None" ? data.gesture : "SCANNING...";
+                document.getElementById('ui-action').innerText = "Color: " + data.color + " // Sat: " + data.saturation + "%";
+                document.getElementById('ui-color').innerText = "FPS: " + data.fps;
+                document.getElementById('ui-power').innerText = data.power;
+                document.getElementById('modal-ip').innerText = data.ip;
+                document.getElementById('modal-status').innerText = data.bulb;
+                
+                document.getElementById('ui-brightness-text').innerText = data.brightness + "%";
+                document.getElementById('ui-saturation-text').innerText = data.saturation + "%";
+                
+                if (!isDraggingBrightness) {
+                    bSlider.value = data.brightness;
+                }
+                if (!isDraggingSaturation) {
+                    sSlider.value = data.saturation;
+                }
+            } catch(e) {}
+            setTimeout(fetchStatus, 500);
+        }
+        fetchStatus();
+
+        // Heartbeat
+        setInterval(() => fetch('/api/heartbeat', {method: 'POST'}).catch(()=>{}), 2000);
+        window.addEventListener('beforeunload', () => navigator.sendBeacon('/api/heartbeat'));
+
+        // Modal
+        function toggleModal(show) {
+            const m = document.getElementById('device-modal');
+            m.classList.toggle('hidden', !show);
+            m.classList.toggle('flex', show);
+        }
+
+        // Tab Switching
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(t => {
+                t.classList.remove('active');
+            });
+            
+            // Add a small delay for the fade-in effect to trigger cleanly
+            setTimeout(() => {
+                document.getElementById('tab-' + tabId).classList.add('active');
+            }, 50);
+            
+            document.querySelectorAll('#nav-tabs .nav-item').forEach(a => {
+                if(a.dataset.tab === tabId) {
+                    a.className = "nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl bg-secondary/10 text-secondary font-bold border border-secondary/30 transition-all duration-300 shadow-[0_0_15px_rgba(6,182,212,0.15)]";
+                } else {
+                    a.className = "nav-item cursor-pointer flex items-center space-x-4 px-4 py-3 rounded-xl text-on-surface/60 hover:text-white hover:bg-white/5 transition-all duration-300";
+                }
+            });
+
+            if (tabId === 'scenes') loadScenes();
+            if (tabId === 'analytics') loadReadme();
+        }
+
+        // Theme Toggle (Kept for compatibility, though Cyberpunk fits dark best)
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+        }
+
+        // Load Scenes
+        async function loadScenes() {
+            try {
+                const res = await fetch('/api/scenes');
+                const data = await res.json();
+                const container = document.getElementById('scenes-container');
+                container.innerHTML = data.scenes.map(s => `
+                    <div onclick="sendAction('scene', ${s.id})" class="cursor-pointer glass-panel p-6 rounded-2xl flex items-center space-x-5 card-hover group">
+                        <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-accent/20 to-accent/5 border border-accent/30 flex items-center justify-center shadow-[inset_0_0_15px_rgba(217,70,239,0.2)] group-hover:shadow-[inset_0_0_25px_rgba(217,70,239,0.4)] transition-all">
+                            <span class="material-symbols-outlined text-white">${s.icon}</span>
+                        </div>
+                        <div>
+                            <h3 class="font-tech font-bold text-xl text-white tracking-wide group-hover:text-accent transition-colors">${s.name}</h3>
+                            <p class="opacity-50 text-sm mt-1 leading-relaxed">${s.description}</p>
+                        </div>
+                    </div>
+                `).join('');
+            } catch(e) {}
+        }
+
+        // Load Readme
+        async function loadReadme() {
+            try {
+                const res = await fetch('/api/readme');
+                const data = await res.json();
+                document.getElementById('readme-content').innerHTML = marked.parse(data.content);
+            } catch(e) {}
+        }
+    </script>
+</body>
+</html>

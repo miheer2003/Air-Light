@@ -1,0 +1,36 @@
+{
+    "timestamp": 1783325764.021665,
+    "devices": [
+        {
+            "id": "485501002462ab0ddb14",
+            "ip": "192.168.1.100",
+            "active": 2,
+            "ability": 0,
+            "mode": 0,
+            "encrypt": true,
+            "productKey": "keyj979nf3q3theh",
+            "name": "Halonix Prizm WiFi Bulb",
+            "key": "?!51T/RT.^!z+7Wq",
+            "mac": "24:62:ab:0d:db:14",
+            "token": "",
+            "wf_cfg": "",
+            "dev_type": "default",
+            "err": "",
+            "type": "default",
+            "dps": {
+                "devId": "485501002462ab0ddb14",
+                "dps": {
+                    "20": true,
+                    "21": "colour",
+                    "22": 1000,
+                    "23": 479,
+                    "24": "00ee03e803e8",
+                    "25": "000e0d00002e03e802cc00000000",
+                    "26": 0
+                }
+            },
+            "origin": "broadcast",
+            "ver": "3.3"
+        }
+    ]
+}
