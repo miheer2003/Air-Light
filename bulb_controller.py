@@ -17,10 +17,15 @@ class BulbController:
         
         # Color mapping using RGB (0-255) for TinyTuya
         self.color_map = {
+            "white": None,  # Handled via set_mode('white')
             "red": (255, 0, 0),
             "green": (0, 255, 0),
             "blue": (0, 0, 255),
-            "yellow": (255, 255, 0)
+            "yellow": (255, 255, 0),
+            "purple": (128, 0, 255),
+            "cyan": (0, 255, 255),
+            "orange": (255, 128, 0),
+            "warm_white": (255, 200, 100)
         }
         
         self.connect()
@@ -128,10 +133,10 @@ class BulbController:
                 return
             for device in self.devices:
                 try:
-                    if color_name == "white":
+                    if color_name == "white" or self.color_map[color_name] is None:
                         device.set_mode('white')
                     else:
-                        h, s, v = self.color_map[color_name]
-                        device.set_colour(h, s, v)
+                        r, g, b = self.color_map[color_name]
+                        device.set_colour(r, g, b)
                 except Exception as e:
                     logger.error(f"Error setting color for bulb: {e}")

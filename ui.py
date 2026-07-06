@@ -1,6 +1,7 @@
 import customtkinter as ctk
-from PIL import Image
+from PIL import Image, ImageTk
 import cv2
+import tkinter as tk
 from typing import Callable, Any
 
 # Set dark mode and color theme
@@ -15,7 +16,7 @@ class AirLightUI(ctk.CTk):
         self.on_reconnect = on_reconnect
         
         self.title("AirLight - AI Smart Lighting")
-        self.geometry("1000x600")
+        self.geometry("1100x650")
         self.resizable(False, False)
         
         # Grid layout (1 row, 2 columns)
@@ -27,11 +28,15 @@ class AirLightUI(ctk.CTk):
         self._setup_status_frame()
         self._setup_bottom_frame()
         
+        # Keep reference to prevent garbage collection
+        self._current_image = None
+        
     def _setup_camera_frame(self):
         self.cam_frame = ctk.CTkFrame(self, corner_radius=10)
         self.cam_frame.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
         
-        self.cam_label = ctk.CTkLabel(self.cam_frame, text="")
+        # Use a standard tkinter Label for the video feed (more reliable for rapid updates)
+        self.cam_label = tk.Label(self.cam_frame, bg="#2b2b2b", bd=0, highlightthickness=0)
         self.cam_label.pack(expand=True, fill="both", padx=10, pady=10)
         
     def _setup_status_frame(self):
@@ -39,7 +44,7 @@ class AirLightUI(ctk.CTk):
         self.status_frame.grid(row=0, column=1, padx=(0, 20), pady=20, sticky="nsew")
         
         # Title
-        title = ctk.CTkLabel(self.status_frame, text="Status", font=("Roboto", 24, "bold"))
+        title = ctk.CTkLabel(self.status_frame, text="⚡ AirLight", font=("Roboto", 24, "bold"))
         title.pack(pady=20)
         
         # Labels mapping
@@ -75,24 +80,28 @@ class AirLightUI(ctk.CTk):
         btn_exit.pack(pady=10)
         
     def update_frame(self, cv_img: Any):
-        """Updates the video feed."""
-        # Convert BGR to RGB
-        cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
-        
-        # Convert to PIL Image
-        pil_img = Image.fromarray(cv_img)
-        
-        # Create CTkImage
-        # Width/Height of the cam_frame is roughly 700x500
-        ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(640, 480))
-        
-        self.cam_label.configure(image=ctk_img, text="")
-        self.cam_label.image = ctk_img
+        """Updates the video feed using standard tkinter PhotoImage for reliability."""
+        try:
+            # Convert BGR to RGB
+            cv_img = cv2.cvtColor(cv_img, cv2.COLOR_BGR2RGB)
+            
+            # Resize to fit the label area
+            cv_img = cv2.resize(cv_img, (640, 480))
+            
+            # Convert to PIL Image, then to tkinter PhotoImage
+            pil_img = Image.fromarray(cv_img)
+            photo = ImageTk.PhotoImage(image=pil_img)
+            
+            # Update label
+            self.cam_label.configure(image=photo)
+            self._current_image = photo  # Keep reference to prevent GC
+        except Exception as e:
+            pass  # Skip frame on error, next frame will render
         
     def show_error(self, message: str):
         """Displays an error message in the camera frame."""
-        self.cam_label.configure(image=None, text=message, font=("Roboto", 30, "bold"), text_color="red")
-        self.cam_label.image = None
+        self.cam_label.configure(image="", text=message, fg="red", font=("Roboto", 30, "bold"))
+        self._current_image = None
         
     def update_status(self, key: str, value: str):
         """Updates a status text."""

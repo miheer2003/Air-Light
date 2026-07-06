@@ -11,14 +11,14 @@ class GestureMapper:
     def __init__(self, bulb_controller: BulbController):
         self.bulb = bulb_controller
         self.last_action_time = 0
-        self.cooldown = 0.5  # seconds
+        self.cooldown = 0.8  # seconds — increased for better accuracy
         
         # State tracking to avoid redundant commands
         self.last_power_state = None
         self.last_color = None
         self.last_brightness = None
         
-        self.colors = ["white", "red", "green", "blue", "yellow"]
+        self.colors = ["white", "red", "green", "blue", "yellow", "purple", "cyan", "orange", "warm_white"]
         self.current_color_idx = 0
 
     def handle_gesture(self, gesture: str, value: Optional[float] = None):
@@ -27,11 +27,11 @@ class GestureMapper:
         
         # Brightness (Pinch) - handled smoothly
         if gesture == "Pinch" and value is not None:
-            # Only update if brightness changed significantly (e.g. > 5%)
+            # Only update if brightness changed significantly (>= 8%)
             brightness_val = int(value)
-            if self.last_brightness is None or abs(self.last_brightness - brightness_val) >= 5:
-                # Need a small cooldown for brightness to avoid flooding the network
-                if current_time - self.last_action_time > 0.1:
+            if self.last_brightness is None or abs(self.last_brightness - brightness_val) >= 8:
+                # Cooldown for brightness to avoid flooding the network
+                if current_time - self.last_action_time > 0.25:
                     logger.info(f"Setting brightness to {brightness_val}%")
                     self.bulb.set_brightness(brightness_val)
                     self.last_brightness = brightness_val
@@ -66,8 +66,21 @@ class GestureMapper:
             action_taken = self._set_color("green")
         elif gesture == "4 Fingers":
             action_taken = self._set_color("blue")
-        elif gesture == "5 Fingers":
-            action_taken = self._set_color("yellow")
+            
+        elif gesture == "Thumbs Up":
+            action_taken = self._set_color("warm_white")
+            if action_taken:
+                logger.info("Gesture: Thumbs Up -> Warm White")
+                
+        elif gesture == "Thumbs Down":
+            action_taken = self._set_color("purple")
+            if action_taken:
+                logger.info("Gesture: Thumbs Down -> Purple")
+                
+        elif gesture == "Rock":
+            action_taken = self._set_color("cyan")
+            if action_taken:
+                logger.info("Gesture: Rock -> Cyan")
             
         elif gesture == "Swipe Right":
             self.current_color_idx = (self.current_color_idx + 1) % len(self.colors)
