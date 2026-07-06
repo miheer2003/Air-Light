@@ -16,7 +16,7 @@
 **Objective**: Basic desktop application with UI, camera feed, gesture recognition, and Tuya local control.
 
 ### Phase 2: Technical Debt & Stability
-**Status**: ⬜ Not Started
+**Status**: ✅ Complete
 **Objective**: Fix technical debt found during mapping (e.g., hardware disconnection graceful handling, testing setup).
 
 ### Phase 3: Future Expansion (Optional)
