@@ -15,14 +15,12 @@ class BulbController:
         self.devices = []
         self.lock = threading.Lock()
         
-        # Color mapping (Hue, Saturation, Value) for Tuya
-        # Note: Tuya H: 0-360, S: 0-1000, V: 0-1000
+        # Color mapping using RGB (0-255) for TinyTuya
         self.color_map = {
-            "white": (0, 0, 1000),     # Actually handled via set_mode('white') usually, but this is a fallback
-            "red": (0, 1000, 1000),
-            "green": (120, 1000, 1000),
-            "blue": (240, 1000, 1000),
-            "yellow": (60, 1000, 1000)
+            "red": (255, 0, 0),
+            "green": (0, 255, 0),
+            "blue": (0, 0, 255),
+            "yellow": (255, 255, 0)
         }
         
         self.connect()
