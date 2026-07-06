@@ -26,11 +26,11 @@ class AirLightApp:
         self.fps_start_time = time.time()
         self.fps_frame_count = 0
         self.current_fps = 0
+        self.frame_count = 0  # For scan line animation
         
-        # Status info for HUD overlay
         self.status = {
             "gesture": "None",
-            "brightness": "100%",
+            "brightness": 100,
             "color": "White",
             "power": "OFF",
             "fps": "0",
@@ -46,21 +46,18 @@ class AirLightApp:
         self.is_running = True
         logger.info("Starting main loop.")
         
-        # Create OpenCV window
-        cv2.namedWindow("AirLight - AI Smart Lighting", cv2.WINDOW_NORMAL)
-        cv2.resizeWindow("AirLight - AI Smart Lighting", 1100, 700)
+        cv2.namedWindow("AirLight", cv2.WINDOW_NORMAL)
+        cv2.resizeWindow("AirLight", 1100, 650)
         
         while self.is_running:
             if self.camera_failed:
-                # Show error frame
-                error_frame = np.zeros((700, 1100, 3), dtype=np.uint8)
-                cv2.putText(error_frame, "Camera Not Found", (300, 350), 
-                           cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 0, 255), 3)
-                cv2.imshow("AirLight - AI Smart Lighting", error_frame)
+                error_frame = np.zeros((650, 1100, 3), dtype=np.uint8)
+                cv2.putText(error_frame, "CAMERA NOT FOUND", (320, 325), 
+                           cv2.FONT_HERSHEY_SIMPLEX, 1.5, (0, 255, 65), 2)
+                cv2.imshow("AirLight", error_frame)
             else:
                 self._process_frame()
             
-            # Check for quit key (ESC or 'q')
             key = cv2.waitKey(1) & 0xFF
             if key == 27 or key == ord('q'):
                 break
@@ -72,7 +69,8 @@ class AirLightApp:
         ret, frame = self.camera.get_frame()
         if not ret:
             return
-            
+        
+        self.frame_count += 1
         self.fps_frame_count += 1
         now = time.time()
         if now - self.fps_start_time > 1.0:
@@ -81,7 +79,6 @@ class AirLightApp:
             self.fps_start_time = now
             self.status["fps"] = str(self.current_fps)
             
-        # Process Frame for Hands
         proc_frame, hands_landmarks = self.tracker.process_frame(frame)
         
         gesture_text = "None"
@@ -94,123 +91,228 @@ class AirLightApp:
             if gesture_text != "None":
                 self.status["gesture"] = gesture_text
                 if brightness_val is not None:
-                    self.status["brightness"] = f"{int(brightness_val)}%"
+                    self.status["brightness"] = int(brightness_val)
             
-            # Execute Mapper in a separate thread
             threading.Thread(
                 target=self.mapper.handle_gesture, 
                 args=(gesture_text, brightness_val),
                 daemon=True
             ).start()
         
-        # Update connection status
-        bulb_status = f"{self.bulb.connected_count}/{self.bulb.total_count} Connected"
+        bulb_status = f"{self.bulb.connected_count}/{self.bulb.total_count} Online"
         if self.bulb.mock_mode:
-            bulb_status = f"MOCK MODE ({self.bulb.total_count} configured)"
+            bulb_status = f"MOCK [{self.bulb.total_count}]"
         self.status["bulb"] = bulb_status
         
-        power_status = "ON" if self.mapper.last_power_state else "OFF"
-        self.status["power"] = power_status
+        self.status["power"] = "ON" if self.mapper.last_power_state else "OFF"
         
         color_status = self.mapper.last_color if self.mapper.last_color else "White"
-        self.status["color"] = color_status.capitalize()
+        self.status["color"] = color_status.upper()
         
-        # Draw HUD overlay
         display_frame = self._draw_hud(proc_frame)
+        cv2.imshow("AirLight", display_frame)
+
+    def _draw_rounded_rect(self, img, pt1, pt2, color, thickness, radius=12):
+        """Draw a rounded rectangle."""
+        x1, y1 = pt1
+        x2, y2 = pt2
         
-        cv2.imshow("AirLight - AI Smart Lighting", display_frame)
+        # Draw filled rounded rectangle using overlapping shapes
+        cv2.rectangle(img, (x1 + radius, y1), (x2 - radius, y2), color, thickness)
+        cv2.rectangle(img, (x1, y1 + radius), (x2, y2 - radius), color, thickness)
+        
+        cv2.ellipse(img, (x1 + radius, y1 + radius), (radius, radius), 180, 0, 90, color, thickness)
+        cv2.ellipse(img, (x2 - radius, y1 + radius), (radius, radius), 270, 0, 90, color, thickness)
+        cv2.ellipse(img, (x1 + radius, y2 - radius), (radius, radius), 90, 0, 90, color, thickness)
+        cv2.ellipse(img, (x2 - radius, y2 - radius), (radius, radius), 0, 0, 90, color, thickness)
 
     def _draw_hud(self, frame):
-        """Draw a heads-up display overlay on the camera frame."""
+        """Draw a futuristic HUD overlay."""
         h, w = frame.shape[:2]
         
-        # Create a wider canvas with a dark panel on the right
-        panel_width = 320
+        # Colors - Neon green + dark theme
+        NEON_GREEN = (65, 255, 0)    # BGR
+        NEON_CYAN = (255, 230, 0)     # BGR
+        DIM_GREEN = (30, 120, 0)
+        DARK_BG = (18, 18, 20)
+        PANEL_BG = (25, 25, 30)
+        GRID_COLOR = (35, 40, 30)
+        TEXT_DIM = (80, 90, 70)
+        TEXT_BRIGHT = (200, 220, 180)
+        
+        panel_width = 330
         canvas = np.zeros((h, w + panel_width, 3), dtype=np.uint8)
-        canvas[:h, :w] = frame
+        canvas[:, :w] = frame
         
-        # Dark panel background with subtle gradient
+        # === RIGHT PANEL ===
         panel = canvas[:, w:]
-        panel[:] = (30, 30, 35)
+        panel[:] = DARK_BG
         
-        # Draw a subtle separator line
-        cv2.line(canvas, (w, 0), (w, h), (60, 60, 70), 2)
+        # Subtle grid pattern on panel
+        for y_line in range(0, h, 20):
+            cv2.line(canvas, (w, y_line), (w + panel_width, y_line), GRID_COLOR, 1)
+        for x_line in range(w, w + panel_width, 20):
+            cv2.line(canvas, (x_line, 0), (x_line, h), GRID_COLOR, 1)
         
-        # Title
-        cv2.putText(canvas, "AirLight", (w + 20, 45), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 1.2, (0, 200, 255), 2)
-        cv2.putText(canvas, "AI Smart Lighting", (w + 20, 75), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, (150, 150, 160), 1)
+        # Glowing separator line
+        cv2.line(canvas, (w, 0), (w, h), NEON_GREEN, 2)
+        cv2.line(canvas, (w + 1, 0), (w + 1, h), DIM_GREEN, 1)
         
-        # Separator
-        cv2.line(canvas, (w + 15, 90), (w + panel_width - 15, 90), (60, 60, 70), 1)
+        # === TITLE BLOCK ===
+        cv2.putText(canvas, "AIRLIGHT", (w + 20, 45), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 1.1, NEON_GREEN, 2)
+        cv2.putText(canvas, "GESTURE CONTROL SYSTEM", (w + 20, 68), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
         
-        # Status items
-        y_start = 130
-        y_step = 55
+        # Title underline with glow
+        cv2.line(canvas, (w + 15, 80), (w + panel_width - 15, 80), DIM_GREEN, 1)
+        cv2.line(canvas, (w + 15, 81), (w + 100, 81), NEON_GREEN, 2)
         
-        items = [
-            ("Gesture", self.status["gesture"], self._get_gesture_color(self.status["gesture"])),
-            ("Power", self.status["power"], (0, 255, 100) if self.status["power"] == "ON" else (0, 0, 200)),
-            ("Brightness", self.status["brightness"], (255, 255, 200)),
-            ("Color", self.status["color"], self._get_color_preview(self.status["color"])),
-            ("Bulb", self.status["bulb"], (0, 255, 100) if "Connected" in self.status["bulb"] else (0, 150, 255)),
-            ("FPS", self.status["fps"], (200, 200, 200)),
-        ]
+        # === STATUS BLOCKS ===
+        y = 105
         
-        for i, (label, value, color) in enumerate(items):
-            y = y_start + i * y_step
-            # Label
-            cv2.putText(canvas, label, (w + 20, y), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.55, (130, 130, 140), 1)
-            # Value
-            cv2.putText(canvas, str(value), (w + 20, y + 25), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.7, color, 2)
+        # POWER indicator
+        power_on = self.status["power"] == "ON"
+        power_color = NEON_GREEN if power_on else (0, 0, 180)
+        # Power dot
+        cv2.circle(canvas, (w + 30, y + 12), 8, power_color, -1)
+        cv2.circle(canvas, (w + 30, y + 12), 10, power_color, 1)
+        cv2.putText(canvas, "POWER", (w + 50, y + 8), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        cv2.putText(canvas, self.status["power"], (w + 50, y + 28), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.7, power_color, 2)
+        y += 55
         
-        # Draw gesture guide at the bottom
-        y_guide = h - 120
-        cv2.line(canvas, (w + 15, y_guide - 15), (w + panel_width - 15, y_guide - 15), (60, 60, 70), 1)
-        cv2.putText(canvas, "Gestures", (w + 20, y_guide + 5), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.55, (150, 150, 160), 1)
+        # GESTURE
+        cv2.putText(canvas, "ACTIVE GESTURE", (w + 20, y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        gesture = self.status["gesture"]
+        g_color = NEON_GREEN if gesture != "None" else TEXT_DIM
+        cv2.putText(canvas, gesture.upper(), (w + 20, y + 28), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.75, g_color, 2)
+        # Blinking indicator when active
+        if gesture != "None" and self.frame_count % 10 < 7:
+            cv2.circle(canvas, (w + panel_width - 30, y + 18), 5, NEON_GREEN, -1)
+        y += 60
+        
+        # BRIGHTNESS BAR
+        cv2.putText(canvas, "BRIGHTNESS", (w + 20, y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        brightness = self.status["brightness"] if isinstance(self.status["brightness"], int) else 100
+        # Bar background
+        bar_x = w + 20
+        bar_w = panel_width - 40
+        bar_h = 18
+        cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), (40, 40, 45), -1)
+        # Bar fill
+        fill_w = int(bar_w * brightness / 100)
+        if fill_w > 0:
+            # Gradient-like fill
+            for i in range(fill_w):
+                intensity = int(255 * (i / bar_w))
+                col = (0, intensity, 0)
+                cv2.line(canvas, (bar_x + i, y + 9), (bar_x + i, y + 8 + bar_h - 1), col, 1)
+        # Bar border
+        cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), DIM_GREEN, 1)
+        # Percentage text
+        cv2.putText(canvas, f"{brightness}%", (bar_x + bar_w - 55, y + 23), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, NEON_GREEN, 1)
+        y += 50
+        
+        # COLOR
+        cv2.putText(canvas, "COLOR", (w + 20, y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        color_name = self.status["color"]
+        color_preview = self._get_color_bgr(color_name)
+        # Color swatch
+        cv2.rectangle(canvas, (w + 20, y + 8), (w + 50, y + 30), color_preview, -1)
+        cv2.rectangle(canvas, (w + 20, y + 8), (w + 50, y + 30), DIM_GREEN, 1)
+        cv2.putText(canvas, color_name, (w + 60, y + 26), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT_BRIGHT, 2)
+        y += 55
+        
+        # NETWORK STATUS
+        cv2.line(canvas, (w + 15, y - 5), (w + panel_width - 15, y - 5), DIM_GREEN, 1)
+        cv2.putText(canvas, "NETWORK", (w + 20, y + 15), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        bulb_status = self.status["bulb"]
+        is_online = "Online" in bulb_status or "MOCK" in bulb_status
+        net_color = NEON_GREEN if is_online else (0, 0, 200)
+        cv2.putText(canvas, bulb_status, (w + 20, y + 40), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.55, net_color, 1)
+        y += 55
+        
+        # FPS
+        cv2.putText(canvas, "FPS", (w + 20, y + 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        cv2.putText(canvas, self.status["fps"], (w + 60, y + 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, NEON_CYAN, 1)
+        
+        # === BOTTOM GESTURE GUIDE ===
+        y_guide = h - 130
+        cv2.line(canvas, (w + 15, y_guide), (w + panel_width - 15, y_guide), DIM_GREEN, 1)
+        cv2.putText(canvas, "COMMANDS", (w + 20, y_guide + 20), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.45, NEON_GREEN, 1)
         
         guides = [
-            "Palm=ON  Fist=OFF",
-            "Pinch=Brightness",
-            "1-4 Fingers=Colors",
-            "Swipe=Cycle  Q=Quit",
+            ("PALM", "ON", NEON_GREEN),
+            ("FIST", "OFF", (0, 0, 200)),
+            ("PINCH", "BRIGHTNESS", NEON_CYAN),
+            ("1-4", "COLORS", TEXT_BRIGHT),
+            ("SWIPE", "CYCLE", TEXT_BRIGHT),
         ]
-        for i, guide in enumerate(guides):
-            cv2.putText(canvas, guide, (w + 20, y_guide + 30 + i * 22), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.42, (100, 100, 110), 1)
+        gx = w + 20
+        gy = y_guide + 42
+        for label, action, color in guides:
+            cv2.putText(canvas, label, (gx, gy), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1)
+            cv2.putText(canvas, action, (gx + 55, gy), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.35, TEXT_DIM, 1)
+            gy += 18
+        
+        # === CAMERA OVERLAY - Corner markers ===
+        marker_len = 25
+        marker_color = NEON_GREEN
+        # Top-left
+        cv2.line(canvas, (5, 5), (5 + marker_len, 5), marker_color, 2)
+        cv2.line(canvas, (5, 5), (5, 5 + marker_len), marker_color, 2)
+        # Top-right
+        cv2.line(canvas, (w - 5, 5), (w - 5 - marker_len, 5), marker_color, 2)
+        cv2.line(canvas, (w - 5, 5), (w - 5, 5 + marker_len), marker_color, 2)
+        # Bottom-left
+        cv2.line(canvas, (5, h - 5), (5 + marker_len, h - 5), marker_color, 2)
+        cv2.line(canvas, (5, h - 5), (5, h - 5 - marker_len), marker_color, 2)
+        # Bottom-right
+        cv2.line(canvas, (w - 5, h - 5), (w - 5 - marker_len, h - 5), marker_color, 2)
+        cv2.line(canvas, (w - 5, h - 5), (w - 5, h - 5 - marker_len), marker_color, 2)
+        
+        # Scan line effect on camera feed
+        scan_y = (self.frame_count * 3) % h
+        cv2.line(canvas, (0, scan_y), (w, scan_y), (0, 60, 0), 1)
+        
+        # Camera label
+        cv2.putText(canvas, "LIVE FEED", (15, 25), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.45, NEON_GREEN, 1)
+        cv2.circle(canvas, (90, 20), 4, (0, 0, 255), -1)  # Red recording dot
+        
+        # ESC to quit hint
+        cv2.putText(canvas, "[Q] QUIT", (w + panel_width - 90, h - 10), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.35, TEXT_DIM, 1)
         
         return canvas
     
-    def _get_gesture_color(self, gesture):
-        """Return a color based on the gesture type."""
+    def _get_color_bgr(self, color_name):
+        """Return BGR color for preview swatch."""
         colors = {
-            "Open Palm": (0, 255, 100),
-            "Closed Fist": (0, 0, 255),
-            "Pinch": (0, 255, 255),
-            "Thumbs Up": (0, 200, 255),
-            "Thumbs Down": (255, 0, 200),
-            "Rock": (255, 255, 0),
-            "Swipe Right": (255, 200, 0),
-            "Swipe Left": (255, 200, 0),
-        }
-        return colors.get(gesture, (200, 200, 200))
-    
-    def _get_color_preview(self, color_name):
-        """Return BGR color for the UI preview."""
-        colors = {
-            "White": (255, 255, 255),
-            "Red": (0, 0, 255),
-            "Green": (0, 255, 0),
-            "Blue": (255, 0, 0),
-            "Yellow": (0, 255, 255),
-            "Purple": (255, 0, 128),
-            "Cyan": (255, 255, 0),
-            "Orange": (0, 128, 255),
-            "Warm_white": (100, 200, 255),
+            "WHITE": (255, 255, 255),
+            "RED": (0, 0, 255),
+            "GREEN": (0, 255, 0),
+            "BLUE": (255, 0, 0),
+            "YELLOW": (0, 255, 255),
+            "PURPLE": (255, 0, 128),
+            "CYAN": (255, 255, 0),
+            "ORANGE": (0, 128, 255),
+            "WARM_WHITE": (100, 200, 255),
         }
         return colors.get(color_name, (200, 200, 200))
 
