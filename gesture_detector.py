@@ -1,5 +1,5 @@
 from typing import List, Tuple
-from utils import calculate_distance, calculate_angle
+from utils import calculate_distance, calculate_angle, calculate_absolute_angle
 
 class GestureDetector:
     """
@@ -78,3 +78,15 @@ class GestureDetector:
                       index_extended and dist < 200)
         
         return is_pinching, dist, (cx, cy)
+
+    def get_index_angle(self, lm_list: List[Tuple[int, int]]) -> float:
+        """
+        Returns the absolute angle of the index finger (from MCP to Tip).
+        Used for detecting the dial gesture.
+        """
+        if not lm_list or len(lm_list) < 21:
+            return 0.0
+            
+        index_mcp = lm_list[5]
+        index_tip = lm_list[8]
+        return calculate_absolute_angle(index_mcp, index_tip)

@@ -8,6 +8,15 @@ def calculate_distance(p1: Tuple[int, int], p2: Tuple[int, int]) -> float:
     """
     return math.hypot(p2[0] - p1[0], p2[1] - p1[1])
 
+def calculate_absolute_angle(p1: Tuple[int, int], p2: Tuple[int, int]) -> float:
+    """
+    Calculates the absolute angle (in degrees) of the line from p1 to p2
+    relative to the horizontal axis. Returns a value between -180 and 180.
+    """
+    dy = p2[1] - p1[1]
+    dx = p2[0] - p1[0]
+    return math.degrees(math.atan2(dy, dx))
+
 def calculate_angle(p1: Tuple[int, int], p2: Tuple[int, int], p3: Tuple[int, int]) -> float:
     """
     Calculates the angle formed by three points (p1, p2, p3) where p2 is the vertex.

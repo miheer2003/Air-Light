@@ -1,5 +1,6 @@
 import tinytuya
 import threading
+import colorsys
 import time
 from typing import Optional
 from logger import logger
@@ -15,18 +16,21 @@ class BulbController:
         self.devices = []
         self.lock = threading.Lock()
         
-        # Color mapping using RGB (0-255) for TinyTuya
+        # Color mapping: (Hue 0-360, Default Saturation 0-100)
         self.color_map = {
             "white": None,  # Handled via set_mode('white')
-            "red": (255, 0, 0),
-            "green": (0, 255, 0),
-            "blue": (0, 0, 255),
-            "yellow": (255, 255, 0),
-            "purple": (128, 0, 255),
-            "cyan": (0, 255, 255),
-            "orange": (255, 128, 0),
-            "warm_white": (255, 200, 100)
+            "red": (0, 100),
+            "green": (120, 100),
+            "blue": (240, 100),
+            "yellow": (60, 100),
+            "purple": (270, 100),
+            "cyan": (180, 100),
+            "orange": (30, 100),
+            "warm_white": (30, 40) # Orange-ish with low saturation
         }
+        
+        self.current_color = "white"
+        self.global_saturation = 100.0
         
         self.connect()
 
@@ -106,7 +110,6 @@ class BulbController:
     def set_brightness(self, percentage: int):
         """Sets brightness (0-100)."""
         if not self.is_connected: return
-        # Ensure within bounds
         percentage = max(1, min(100, percentage))
         
         with self.lock:
@@ -119,6 +122,12 @@ class BulbController:
                 except Exception as e:
                     logger.error(f"Error setting brightness for bulb: {e}")
 
+    def set_saturation(self, percentage: float):
+        """Sets the global saturation (0-100) and applies it to the current color."""
+        self.global_saturation = max(0.0, min(100.0, percentage))
+        if self.current_color != "white":
+            self._apply_current_color()
+
     def set_color(self, color_name: str):
         """Sets the bulb to a specific color."""
         if not self.is_connected: return
@@ -127,16 +136,25 @@ class BulbController:
             logger.warning(f"Unknown color: {color_name}")
             return
             
+        self.current_color = color_name
+        self._apply_current_color()
+        
+    def _apply_current_color(self):
         with self.lock:
             if self.mock_mode:
-                logger.debug(f"[MOCK] {self.total_count} Bulbs Color -> {color_name}")
+                logger.debug(f"[MOCK] {self.total_count} Bulbs Color -> {self.current_color} (Sat: {int(self.global_saturation)}%)")
                 return
             for device in self.devices:
                 try:
-                    if color_name == "white" or self.color_map[color_name] is None:
+                    if self.current_color == "white" or self.color_map[self.current_color] is None:
                         device.set_mode('white')
                     else:
-                        r, g, b = self.color_map[color_name]
-                        device.set_colour(r, g, b)
+                        hue, base_sat = self.color_map[self.current_color]
+                        # Combine base saturation with global saturation
+                        final_sat = (base_sat / 100.0) * (self.global_saturation / 100.0)
+                        
+                        # Convert HSV to RGB (Hue 0-1, Sat 0-1, Val 1.0)
+                        r, g, b = colorsys.hsv_to_rgb(hue / 360.0, final_sat, 1.0)
+                        device.set_colour(int(r * 255), int(g * 255), int(b * 255))
                 except Exception as e:
                     logger.error(f"Error setting color for bulb: {e}")

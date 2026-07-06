@@ -11,12 +11,13 @@ class GestureMapper:
     def __init__(self, bulb_controller: BulbController):
         self.bulb = bulb_controller
         self.last_action_time = 0
-        self.cooldown = 0.8  # seconds — increased for better accuracy
+        self.cooldown = 0.8  # seconds
         
         # State tracking to avoid redundant commands
         self.last_power_state = None
         self.last_color = None
         self.last_brightness = None
+        self.last_saturation = None
         
         self.colors = ["white", "red", "green", "blue", "yellow", "purple", "cyan", "orange", "warm_white"]
         self.current_color_idx = 0
@@ -27,14 +28,23 @@ class GestureMapper:
         
         # Brightness (Pinch) - handled smoothly
         if gesture == "Pinch" and value is not None:
-            # Only update if brightness changed significantly (>= 8%)
             brightness_val = int(value)
             if self.last_brightness is None or abs(self.last_brightness - brightness_val) >= 8:
-                # Cooldown for brightness to avoid flooding the network
                 if current_time - self.last_action_time > 0.25:
                     logger.info(f"Setting brightness to {brightness_val}%")
                     self.bulb.set_brightness(brightness_val)
                     self.last_brightness = brightness_val
+                    self.last_action_time = current_time
+            return
+            
+        # Density / Saturation (Dial) - handled smoothly
+        if gesture == "Dial" and value is not None:
+            sat_val = int(value)
+            if self.last_saturation is None or abs(self.last_saturation - sat_val) >= 8:
+                if current_time - self.last_action_time > 0.25:
+                    logger.info(f"Setting saturation (density) to {sat_val}%")
+                    self.bulb.set_saturation(sat_val)
+                    self.last_saturation = sat_val
                     self.last_action_time = current_time
             return
 

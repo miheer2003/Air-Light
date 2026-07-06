@@ -31,6 +31,7 @@ class AirLightApp:
         self.status = {
             "gesture": "None",
             "brightness": 100,
+            "saturation": 100,
             "color": "White",
             "power": "OFF",
             "fps": "0",
@@ -91,7 +92,10 @@ class AirLightApp:
             if gesture_text != "None":
                 self.status["gesture"] = gesture_text
                 if brightness_val is not None:
-                    self.status["brightness"] = int(brightness_val)
+                    if gesture_text == "Dial":
+                        self.status["saturation"] = int(brightness_val)
+                    else:
+                        self.status["brightness"] = int(brightness_val)
             
             threading.Thread(
                 target=self.mapper.handle_gesture, 
@@ -202,7 +206,7 @@ class AirLightApp:
         # Bar background
         bar_x = w + 20
         bar_w = panel_width - 40
-        bar_h = 18
+        bar_h = 14
         cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), (40, 40, 45), -1)
         # Bar fill
         fill_w = int(bar_w * brightness / 100)
@@ -215,9 +219,29 @@ class AirLightApp:
         # Bar border
         cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), DIM_GREEN, 1)
         # Percentage text
-        cv2.putText(canvas, f"{brightness}%", (bar_x + bar_w - 55, y + 23), 
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.5, NEON_GREEN, 1)
-        y += 50
+        cv2.putText(canvas, f"{brightness}%", (bar_x + bar_w - 45, y + 21), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, NEON_GREEN, 1)
+        y += 40
+        
+        # DENSITY (SATURATION) BAR
+        cv2.putText(canvas, "DENSITY", (w + 20, y), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, TEXT_DIM, 1)
+        saturation = self.status.get("saturation", 100)
+        # Bar background
+        cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), (40, 40, 45), -1)
+        # Bar fill
+        fill_w = int(bar_w * saturation / 100)
+        if fill_w > 0:
+            for i in range(fill_w):
+                intensity = int(255 * (i / bar_w))
+                col = (0, intensity, intensity) # Cyan tint for density
+                cv2.line(canvas, (bar_x + i, y + 9), (bar_x + i, y + 8 + bar_h - 1), col, 1)
+        # Bar border
+        cv2.rectangle(canvas, (bar_x, y + 8), (bar_x + bar_w, y + 8 + bar_h), (0, 100, 100), 1)
+        # Percentage text
+        cv2.putText(canvas, f"{saturation}%", (bar_x + bar_w - 45, y + 21), 
+                   cv2.FONT_HERSHEY_SIMPLEX, 0.4, NEON_CYAN, 1)
+        y += 40
         
         # COLOR
         cv2.putText(canvas, "COLOR", (w + 20, y), 
@@ -229,7 +253,7 @@ class AirLightApp:
         cv2.rectangle(canvas, (w + 20, y + 8), (w + 50, y + 30), DIM_GREEN, 1)
         cv2.putText(canvas, color_name, (w + 60, y + 26), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, TEXT_BRIGHT, 2)
-        y += 55
+        y += 50
         
         # NETWORK STATUS
         cv2.line(canvas, (w + 15, y - 5), (w + panel_width - 15, y - 5), DIM_GREEN, 1)
@@ -258,16 +282,16 @@ class AirLightApp:
             ("PALM", "ON", NEON_GREEN),
             ("FIST", "OFF", (0, 0, 200)),
             ("PINCH", "BRIGHTNESS", NEON_CYAN),
-            ("1-4", "COLORS", TEXT_BRIGHT),
+            ("1 FINGER + ROTATE", "DENSITY", (0, 255, 255)),
             ("SWIPE", "CYCLE", TEXT_BRIGHT),
         ]
         gx = w + 20
-        gy = y_guide + 42
+        gy = y_guide + 32
         for label, action, color in guides:
             cv2.putText(canvas, label, (gx, gy), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.35, color, 1)
-            cv2.putText(canvas, action, (gx + 55, gy), 
-                       cv2.FONT_HERSHEY_SIMPLEX, 0.35, TEXT_DIM, 1)
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.33, color, 1)
+            cv2.putText(canvas, action, (gx + 120, gy), 
+                       cv2.FONT_HERSHEY_SIMPLEX, 0.33, TEXT_DIM, 1)
             gy += 18
         
         # === CAMERA OVERLAY - Corner markers ===

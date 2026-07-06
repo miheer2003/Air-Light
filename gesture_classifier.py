@@ -13,6 +13,7 @@ class GestureClassifier:
         self.detector = GestureDetector()
         self.last_action_time = 0
         self.brightness_ema = ExponentialMovingAverage(alpha=0.15)
+        self.saturation_ema = ExponentialMovingAverage(alpha=0.15) # For dial
         self.last_gesture = "None"
         self.gesture_hold_count = 0
         self.gesture_hold_threshold = 4  # Must see same gesture for 4 frames
@@ -21,6 +22,10 @@ class GestureClassifier:
         self.prev_hand_center = None
         self.swipe_threshold = 130
         self.swipe_cooldown = 1.5
+        
+        # For dial detection
+        self.prev_index_angle = None
+        self.current_saturation = 100.0 # start at 100%
 
     def process_hand(self, lm_list: List[Tuple[int, int]]) -> Tuple[str, Optional[float]]:
         """
@@ -52,10 +57,35 @@ class GestureClassifier:
             smoothed_val = self.brightness_ema.update(mapped_val)
             return "Pinch", smoothed_val
             
-        # 4. Classify discrete gestures
+        # 4. Check for Dial (1 finger open, rotating)
+        if count == 1 and open_fingers[1] == 1 and open_fingers[0] == 0:
+            angle = self.detector.get_index_angle(lm_list)
+            if self.prev_index_angle is not None:
+                # Calculate angle difference (handle wrap-around)
+                diff = angle - self.prev_index_angle
+                if diff > 180: diff -= 360
+                elif diff < -180: diff += 360
+                
+                # If rotating, change saturation
+                if abs(diff) > 2.0: # threshold to prevent jitter
+                    # Inverted so clockwise increases saturation (usually downwards in screen coords)
+                    # Note: y goes down in OpenCV, so angle increases clockwise. 
+                    # If diff > 0 (clockwise), increase saturation.
+                    self.current_saturation += diff * 0.5
+                    self.current_saturation = max(0.0, min(100.0, self.current_saturation))
+                    
+                    smoothed_val = self.saturation_ema.update(self.current_saturation)
+                    self.prev_index_angle = angle
+                    return "Dial", smoothed_val
+            self.prev_index_angle = angle
+            # Fallthrough to discrete 1-finger gesture if not rotating fast enough
+        else:
+            self.prev_index_angle = None
+            
+        # 5. Classify discrete gestures
         raw_gesture = self._classify_fingers(open_fingers, count, lm_list)
         
-        # 5. Apply gesture hold filter
+        # 6. Apply gesture hold filter
         if raw_gesture == self.last_gesture:
             self.gesture_hold_count += 1
         else:
