@@ -88,9 +88,9 @@ class AirLightApp:
                 self.ui.update_frame(proc_frame)
             
         # Update connection status
-        bulb_status = "Connected" if self.bulb.is_connected else "Disconnected"
+        bulb_status = f"{self.bulb.connected_count}/{self.bulb.total_count} Connected"
         if self.bulb.mock_mode:
-            bulb_status = "MOCK MODE"
+            bulb_status = f"MOCK MODE ({self.bulb.total_count} configured)"
         self.ui.update_status("bulb", bulb_status)
         
         power_status = "ON" if self.mapper.last_power_state else "OFF"
