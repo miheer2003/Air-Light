@@ -28,9 +28,10 @@ class AirLightApp:
 
     def start(self):
         """Starts the application."""
+        self.camera_failed = False
         if not self.camera.start():
-            logger.error("Could not start camera. Exiting.")
-            sys.exit(1)
+            logger.error("Could not start camera. Proceeding with UI only.")
+            self.camera_failed = True
             
         self.is_running = True
         logger.info("Starting main loop.")
@@ -46,42 +47,45 @@ class AirLightApp:
         if not self.is_running:
             return
             
-        ret, frame = self.camera.get_frame()
-        if ret:
-            self.fps_frame_count += 1
-            now = time.time()
-            if now - self.fps_start_time > 1.0:
-                self.current_fps = self.fps_frame_count
-                self.fps_frame_count = 0
-                self.fps_start_time = now
-                self.ui.update_status("fps", str(self.current_fps))
+        if self.camera_failed:
+            self.ui.show_error("Camera Not Found")
+        else:
+            ret, frame = self.camera.get_frame()
+            if ret:
+                self.fps_frame_count += 1
+                now = time.time()
+                if now - self.fps_start_time > 1.0:
+                    self.current_fps = self.fps_frame_count
+                    self.fps_frame_count = 0
+                    self.fps_start_time = now
+                    self.ui.update_status("fps", str(self.current_fps))
+                    
+                # Process Frame for Hands
+                proc_frame, hands_landmarks = self.tracker.process_frame(frame)
                 
-            # Process Frame for Hands
-            proc_frame, hands_landmarks = self.tracker.process_frame(frame)
-            
-            gesture_text = "None"
-            brightness_val = None
-            
-            if hands_landmarks:
-                # We only process the first detected hand to avoid confusion
-                lm_list = hands_landmarks[0]
-                gesture_text, brightness_val = self.classifier.process_hand(lm_list)
+                gesture_text = "None"
+                brightness_val = None
                 
-                # Update UI Status
-                if gesture_text != "None":
-                    self.ui.update_status("gesture", gesture_text)
-                    if brightness_val is not None:
-                        self.ui.update_status("brightness", f"{int(brightness_val)}%")
-                
-                # Execute Mapper in a separate thread to prevent blocking the UI
-                threading.Thread(
-                    target=self.mapper.handle_gesture, 
-                    args=(gesture_text, brightness_val),
-                    daemon=True
-                ).start()
-                
-            # Update Video Feed
-            self.ui.update_frame(proc_frame)
+                if hands_landmarks:
+                    # We only process the first detected hand to avoid confusion
+                    lm_list = hands_landmarks[0]
+                    gesture_text, brightness_val = self.classifier.process_hand(lm_list)
+                    
+                    # Update UI Status
+                    if gesture_text != "None":
+                        self.ui.update_status("gesture", gesture_text)
+                        if brightness_val is not None:
+                            self.ui.update_status("brightness", f"{int(brightness_val)}%")
+                    
+                    # Execute Mapper in a separate thread to prevent blocking the UI
+                    threading.Thread(
+                        target=self.mapper.handle_gesture, 
+                        args=(gesture_text, brightness_val),
+                        daemon=True
+                    ).start()
+                    
+                # Update Video Feed
+                self.ui.update_frame(proc_frame)
             
         # Update connection status
         bulb_status = "Connected" if self.bulb.is_connected else "Disconnected"

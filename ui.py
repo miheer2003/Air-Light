@@ -86,8 +86,13 @@ class AirLightUI(ctk.CTk):
         # Width/Height of the cam_frame is roughly 700x500
         ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(640, 480))
         
-        self.cam_label.configure(image=ctk_img)
+        self.cam_label.configure(image=ctk_img, text="")
         self.cam_label.image = ctk_img
+        
+    def show_error(self, message: str):
+        """Displays an error message in the camera frame."""
+        self.cam_label.configure(image=None, text=message, font=("Roboto", 30, "bold"), text_color="red")
+        self.cam_label.image = None
         
     def update_status(self, key: str, value: str):
         """Updates a status text."""
