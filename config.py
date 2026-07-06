@@ -1,13 +1,11 @@
 import json
 import os
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, field
 from logger import logger
 
 @dataclass
 class AppConfig:
-    device_ip: str = "192.168.1.100"
-    device_id: str = "your_device_id"
-    local_key: str = "your_local_key"
+    devices: list = field(default_factory=lambda: [{"ip": "192.168.1.100", "id": "your_device_id", "key": "your_local_key"}])
     camera_index: int = 0
     default_brightness: int = 100
     mock_mode: bool = True  # If True, won't crash if Tuya fails to connect
@@ -34,6 +32,12 @@ class ConfigManager:
                     for key, value in data.items():
                         if hasattr(self.config, key):
                             setattr(self.config, key, value)
+                            
+                    # Migrate legacy config
+                    if "device_ip" in data and "device_id" in data and "local_key" in data:
+                        self.config.devices = [{"ip": data["device_ip"], "id": data["device_id"], "key": data["local_key"]}]
+                        self.save()
+                        
                 logger.info("Configuration loaded successfully.")
             except Exception as e:
                 logger.error(f"Failed to load config: {e}")
