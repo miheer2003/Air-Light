@@ -11,13 +11,8 @@ class BulbController:
     Handles reconnects and gracefully falls back to mock mode if connection fails.
     """
     def __init__(self):
-        self.ip = config.device_ip
-        self.device_id = config.device_id
-        self.local_key = config.local_key
         self.mock_mode = config.mock_mode
-        
-        self.device: Optional[tinytuya.BulbDevice] = None
-        self.is_connected = False
+        self.devices = []
         self.lock = threading.Lock()
         
         # Color mapping (Hue, Saturation, Value) for Tuya
@@ -32,58 +27,78 @@ class BulbController:
         
         self.connect()
 
+    @property
+    def is_connected(self):
+        return len(self.devices) > 0 or self.mock_mode
+        
+    @property
+    def connected_count(self):
+        if self.mock_mode:
+            return len(config.devices)
+        return len(self.devices)
+        
+    @property
+    def total_count(self):
+        return len(config.devices)
+
     def connect(self):
-        """Attempts to connect to the bulb."""
+        """Attempts to connect to the bulbs."""
         if self.mock_mode:
             logger.info("BulbController running in MOCK MODE (No real Tuya connection).")
-            self.is_connected = True
             return
 
-        try:
-            logger.info(f"Connecting to bulb at {self.ip}...")
-            self.device = tinytuya.BulbDevice(
-                dev_id=self.device_id,
-                address=self.ip,
-                local_key=self.local_key,
-                version=3.3
-            )
-            self.device.set_socketPersistent(True) # Keep connection alive
+        self.devices = []
+        for dev_config in config.devices:
+            ip = dev_config.get("ip", "")
+            dev_id = dev_config.get("id", "")
+            local_key = dev_config.get("key", "")
             
-            # Test connection
-            status = self.device.status()
-            if 'Error' in status or status == {}:
-                raise Exception("Tuya status returned error or empty")
+            try:
+                logger.info(f"Connecting to bulb at {ip}...")
+                device = tinytuya.BulbDevice(
+                    dev_id=dev_id,
+                    address=ip,
+                    local_key=local_key,
+                    version=3.3
+                )
+                device.set_socketPersistent(True) # Keep connection alive
                 
-            self.is_connected = True
-            logger.info("Successfully connected to bulb.")
-        except Exception as e:
-            self.is_connected = False
-            logger.error(f"Failed to connect to bulb: {e}")
-            if config.mock_mode:
-                logger.info("Falling back to MOCK MODE.")
-                self.is_connected = True # Fake connection for mock mode
+                # Test connection
+                status = device.status()
+                if 'Error' in status or status == {}:
+                    raise Exception("Tuya status returned error or empty")
+                    
+                self.devices.append(device)
+                logger.info(f"Successfully connected to bulb at {ip}.")
+            except Exception as e:
+                logger.error(f"Failed to connect to bulb at {ip}: {e}")
+                
+        if len(self.devices) == 0 and config.mock_mode:
+            logger.info("No real bulbs connected, falling back to MOCK MODE.")
 
     def turn_on(self):
         if not self.is_connected: return
         with self.lock:
             if self.mock_mode:
-                logger.debug("[MOCK] Bulb ON")
+                logger.debug(f"[MOCK] {self.total_count} Bulbs ON")
                 return
-            try:
-                self.device.turn_on()
-            except Exception as e:
-                logger.error(f"Error turning on: {e}")
+            for device in self.devices:
+                try:
+                    device.turn_on()
+                except Exception as e:
+                    logger.error(f"Error turning on bulb: {e}")
 
     def turn_off(self):
         if not self.is_connected: return
         with self.lock:
             if self.mock_mode:
-                logger.debug("[MOCK] Bulb OFF")
+                logger.debug(f"[MOCK] {self.total_count} Bulbs OFF")
                 return
-            try:
-                self.device.turn_off()
-            except Exception as e:
-                logger.error(f"Error turning off: {e}")
+            for device in self.devices:
+                try:
+                    device.turn_off()
+                except Exception as e:
+                    logger.error(f"Error turning off bulb: {e}")
 
     def set_brightness(self, percentage: int):
         """Sets brightness (0-100)."""
@@ -93,17 +108,13 @@ class BulbController:
         
         with self.lock:
             if self.mock_mode:
-                logger.debug(f"[MOCK] Brightness -> {percentage}%")
+                logger.debug(f"[MOCK] {self.total_count} Bulbs Brightness -> {percentage}%")
                 return
-            try:
-                # Tuya brightness usually 10-1000 or 25-255 depending on bulb
-                # We'll assume standard 10-1000 for standard tuya v3.3
-                val = int((percentage / 100.0) * 1000)
-                # Tuya library has set_brightness (0-100) or set_brightness_percentage
-                # Using set_brightness_percentage for standard behavior
-                self.device.set_brightness_percentage(percentage)
-            except Exception as e:
-                logger.error(f"Error setting brightness: {e}")
+            for device in self.devices:
+                try:
+                    device.set_brightness_percentage(percentage)
+                except Exception as e:
+                    logger.error(f"Error setting brightness for bulb: {e}")
 
     def set_color(self, color_name: str):
         """Sets the bulb to a specific color."""
@@ -115,13 +126,14 @@ class BulbController:
             
         with self.lock:
             if self.mock_mode:
-                logger.debug(f"[MOCK] Color -> {color_name}")
+                logger.debug(f"[MOCK] {self.total_count} Bulbs Color -> {color_name}")
                 return
-            try:
-                if color_name == "white":
-                    self.device.set_mode('white')
-                else:
-                    h, s, v = self.color_map[color_name]
-                    self.device.set_colour(h, s, v)
-            except Exception as e:
-                logger.error(f"Error setting color: {e}")
+            for device in self.devices:
+                try:
+                    if color_name == "white":
+                        device.set_mode('white')
+                    else:
+                        h, s, v = self.color_map[color_name]
+                        device.set_colour(h, s, v)
+                except Exception as e:
+                    logger.error(f"Error setting color for bulb: {e}")
